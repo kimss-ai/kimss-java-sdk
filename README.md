@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-purple?logo=github)](https://github.com/kimss-ai/kimss-java-sdk/actions/workflows/ci.yml)
 
+> **Deprecated for new gateway onboarding.** Do not add Maven `com.kimss:kimss-java` to connect a service. Use the official OpenAI or Anthropic Java client (or JDK `HttpClient`) and follow the [control-plane agent-to-agent contract](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md). New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
+
 **Track, govern, and secure autonomous agents with exactly 1 line of code. Zero data-plane refactoring required.**
 
 Dual-listener inbound: OpenAI OkHttp at `https://api.kimss.ai/v1` or Anthropic Java client at `https://api.kimss.ai` + Agent-Id headers.
