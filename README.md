@@ -36,7 +36,7 @@ AnthropicClient client = AnthropicOkHttpClient.builder()
     .build();
 ```
 
-**Developer tier (Always Free):** 25,000 governed requests/month · [Get a key](https://kimss.ai/app/signup)
+**Start with a 14-day Production trial (no card):** 100,000 governed requests/month during the trial · [Sign up](https://kimss.ai/app/signup)
 
 | Inbound | Vaulted BYO |
 |---------|-------------|
