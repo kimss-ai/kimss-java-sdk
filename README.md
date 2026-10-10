@@ -4,7 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-purple?logo=github)](https://github.com/kimss-ai/kimss-java-sdk/actions/workflows/ci.yml)
 
-> **Deprecated for new gateway onboarding.** Do not add Maven `com.kimss:kimss-java` to connect a service. Use the official OpenAI or Anthropic Java client (or JDK `HttpClient`) and follow the [control-plane agent-to-agent contract](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md). New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
+> **Path A (chat):** keep the official OpenAI or Anthropic Java client — do **not** use `KimssClient` / `AgentsApi.run` for inference. Contract: [control-plane AI_INTEGRATION.md](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md).
+>
+> **Optional swarm lineage:** add `ai.kimss:kimss-java` (≥0.3.0) and use **`KimssProxy`** so Observe/Enforce on Swarm Runs works without hand-rolled `X-Kimss-Run-Id` headers. Python equivalent: `pip install "kimss>=2.2.0"` + `KimssProxy`. New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
 
 **Track, govern, and secure autonomous agents with exactly 1 line of code. Zero data-plane refactoring required.**
 
@@ -68,11 +70,26 @@ Point OpenAI at `https://api.kimss.ai/v1` or Anthropic at `https://api.kimss.ai`
 
 More detail: [GETTING_STARTED.md](GETTING_STARTED.md).
 
+### Optional — Swarm lineage (`KimssProxy`)
+
+```java
+KimssProxy proxy = KimssProxy.builder()
+    .apiKey(System.getenv("KIMSS_API_KEY"))
+    .agentId("orchestrator")
+    .build();
+// JDK path (no OpenAI Java dep):
+proxy.chatCompletions("custom:your-model", List.of(Map.of("role", "user", "content", "hi")));
+// Or: OpenAI client + proxy.requestHeaders() / absorbResponseHeaders(...)
+proxy.delegate("researcher");
+```
+
+Toggle Observe/Enforce under Guardrails → Agents & Delegation without removing this client.
+
 ---
 
 ## Control plane (DevOps)
 
-The `ai.kimss:kimss-java` artifact is **not** the inference path. Use REST + Governance UI:
+`KimssClient` remains a **residual** control-plane / legacy helper — not the Path A chat client. Use REST + Governance UI for:
 
 | Concern | How |
 |---------|-----|

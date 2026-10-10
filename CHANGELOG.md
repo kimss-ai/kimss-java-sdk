@@ -2,9 +2,20 @@
 
 ## [Unreleased]
 
-### Fixed
+## [0.3.0] — 2026-10-10
 
-- Onboarding and getting-started docs match dual-listener inbound: Anthropic Java client at `https://api.kimss.ai`. Azure official clients remain vault-only.
+### Added
+
+- **`KimssProxy`** — Invisible Proxy helper with automatic `RunContext` / lineage headers (`requestHeaders`, `absorbResponseHeaders`, `delegate`, JDK `chatCompletions`). Parity with Python `kimss.proxy.KimssProxy` (PyPI `kimss>=2.2.0`).
+- **`RunContext`** — declared-run lineage model + header parse helpers.
+- Example: `examples/ProxyAutoLineage.java`.
+- Unit tests: `KimssProxyTest` (no live gateway).
+
+### Notes
+
+- Plain gateway chat still uses the official OpenAI/Anthropic Java client (no Maven required for Path A).
+- Use `KimssProxy` when you want Swarm Runs Observe/Enforce without hand-rolling `X-Kimss-Run-Id` headers.
+- `KimssClient` / `AgentsApi.run` remain deprecated for chat.
 
 ## [0.2.0] — 2026-08-21
 

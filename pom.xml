@@ -6,11 +6,11 @@
 
   <groupId>ai.kimss</groupId>
   <artifactId>kimss-java</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
   <packaging>jar</packaging>
 
   <name>Kimss Java SDK</name>
-  <description>Kimss Secure AI Gateway residual Java client (prefer OpenAI OkHttp baseUrl https://api.kimss.ai/v1 for inference).</description>
+  <description>Kimss Secure AI Gateway Java client — Invisible Proxy lineage (KimssProxy) plus residual control-plane helpers. Prefer OpenAI OkHttp baseUrl https://api.kimss.ai/v1 for plain chat.</description>
   <url>https://github.com/kimss-ai/kimss-java-sdk</url>
 
   <licenses>
