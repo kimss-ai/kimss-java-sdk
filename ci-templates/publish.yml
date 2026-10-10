@@ -1,7 +1,7 @@
 name: Publish to Maven Central
 
-# SSOT lives in kimssApi/kimss_java_sdk (mirrored to kimss-ai/kimss-java-sdk).
-# Requires on the public mirror: CENTRAL_USERNAME, CENTRAL_PASSWORD, MAVEN_GPG_*.
+# SSOT: kimssApi/kimss_java_sdk → mirrored to https://github.com/kimss-ai/kimss-java-sdk
+# Secrets on public mirror: CENTRAL_USERNAME, CENTRAL_PASSWORD, MAVEN_GPG_PRIVATE_KEY, MAVEN_GPG_PASSPHRASE
 
 on:
   push:
@@ -18,12 +18,9 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-          server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      - name: Build signed Central bundle
+      - name: Build signed Central bundle and upload
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
@@ -35,71 +32,87 @@ jobs:
             exit 0
           fi
 
-          # Stage + sign locally; do not upload yet (portal rejects maven-metadata* in the zip).
-          mvn -B -Ppublish clean deploy -DskipPublishing=true
+          # Sign artifacts (verify phase). Do not use central-publishing deploy — it can
+          # leave maven-metadata under ai/kimss/kimss-java/ which Central rejects.
+          mvn -B -Ppublish clean verify
 
-          STAGE=target/central-staging
+          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          GROUP_PATH=ai/kimss/kimss-java
+          STAGE_ROOT=target/central-staging
+          STAGE="${STAGE_ROOT}/${GROUP_PATH}/${VERSION}"
           PUB=target/central-publishing
-          mkdir -p "$PUB"
+          mkdir -p "$STAGE" "$PUB"
 
-          echo "== Staging tree before sanitize =="
-          find "$STAGE" -type f | sort
+          ART="kimss-java-${VERSION}"
+          cp pom.xml "${STAGE}/${ART}.pom"
+          cp "target/${ART}.jar" "$STAGE/"
+          cp "target/${ART}-sources.jar" "$STAGE/"
+          cp "target/${ART}-javadoc.jar" "$STAGE/"
+          cp "target/${ART}.jar.asc" "$STAGE/"
+          cp "target/${ART}.pom.asc" "$STAGE/"
+          cp "target/${ART}-sources.jar.asc" "$STAGE/"
+          cp "target/${ART}-javadoc.jar.asc" "$STAGE/"
 
-          # Known Central failure: metadata under ai/kimss/kimss-java/ (no sibling .pom).
-          # See https://stackoverflow.com/q/78026067 and Kotlinlang Slack thread.
-          find "$STAGE" -name 'maven-metadata*.xml' -print -delete
-          rm -f "$STAGE/central-bundle.zip" "$PUB/central-bundle.zip"
+          # Required checksums (md5 + sha1 minimum; sha256/512 accepted)
+          while IFS= read -r -d '' f; do
+            md5sum "$f" | awk '{print $1}' > "${f}.md5"
+            sha1sum "$f" | awk '{print $1}' > "${f}.sha1"
+            sha256sum "$f" | awk '{print $1}' > "${f}.sha256"
+            sha512sum "$f" | awk '{print $1}' > "${f}.sha512"
+          done < <(find "$STAGE" -type f ! -name '*.md5' ! -name '*.sha1' ! -name '*.sha256' ! -name '*.sha512' -print0)
 
-          echo "== Staging tree after sanitize =="
-          find "$STAGE" -type f | sort
+          echo "== Staging tree =="
+          find "$STAGE_ROOT" -type f | sort
 
           python3 - <<'PY'
           import pathlib, zipfile
           stage = pathlib.Path("target/central-staging")
           out = pathlib.Path("target/central-publishing/central-bundle.zip")
-          out.parent.mkdir(parents=True, exist_ok=True)
           with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
               for path in sorted(stage.rglob("*")):
                   if path.is_file():
                       zf.write(path, path.relative_to(stage).as_posix())
-          print("Wrote", out, "bytes", out.stat().st_size)
-          with zipfile.ZipFile(out) as zf:
-              names = zf.namelist()
-              for n in names:
-                  print(n)
-              if not any(n.endswith(".pom") and "kimss-java-" in n for n in names):
-                  raise SystemExit("Bundle is missing kimss-java-*.pom")
-              if any("maven-metadata" in n for n in names):
-                  raise SystemExit("Bundle still contains maven-metadata")
+          names = zipfile.ZipFile(out).namelist()
+          print("Wrote", out, "files", len(names))
+          for n in names:
+              print(n)
+          if not any(n.endswith(".pom") and "/kimss-java-" in n.replace("\\", "/") for n in names):
+              raise SystemExit("Bundle is missing kimss-java-*.pom")
+          if any("maven-metadata" in n for n in names):
+              raise SystemExit("Bundle contains maven-metadata")
           PY
 
           # Portal API: https://central.sonatype.org/publish/publish-portal-api/
           AUTH=$(printf '%s:%s' "$MAVEN_USERNAME" "$MAVEN_PASSWORD" | base64 -w0)
-          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
           NAME="kimss-java-${VERSION}"
           echo "Uploading bundle as ${NAME} (AUTOMATIC)..."
-          RESP=$(curl -sS -X POST \
+          HTTP_CODE=$(curl -sS -o /tmp/central-upload.txt -w "%{http_code}" -X POST \
             -H "Authorization: Bearer ${AUTH}" \
             -F "bundle=@${PUB}/central-bundle.zip" \
             "https://central.sonatype.com/api/v1/publisher/upload?name=${NAME}&publishingType=AUTOMATIC")
-          echo "Upload response: ${RESP}"
-          DEPLOYMENT_ID=$(echo "$RESP" | tr -d '"')
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "null" ]; then
+          RESP=$(cat /tmp/central-upload.txt)
+          echo "HTTP ${HTTP_CODE} body: ${RESP}"
+          if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Central upload failed"
+            exit 1
+          fi
+          DEPLOYMENT_ID=$(echo "$RESP" | tr -d '"[:space:]')
+          if [ -z "$DEPLOYMENT_ID" ]; then
             echo "::error::No deploymentId from Central upload"
             exit 1
           fi
 
           echo "Polling deployment ${DEPLOYMENT_ID}..."
-          for i in $(seq 1 60); do
+          for i in $(seq 1 90); do
             STATUS_JSON=$(curl -sS -X POST \
               -H "Authorization: Bearer ${AUTH}" \
               "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
             echo "$STATUS_JSON"
-            STATE=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('deploymentState',''))" 2>/dev/null || true)
+            STATE=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('deploymentState',''))")
             case "$STATE" in
               PUBLISHED)
                 echo "Published ai.kimss:kimss-java:${VERSION}"
-                echo "https://repo1.maven.org/maven2/ai/kimss/kimss-java/"
+                echo "https://repo1.maven.org/maven2/ai/kimss/kimss-java/${VERSION}/"
                 exit 0
                 ;;
               FAILED)
