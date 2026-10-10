@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Maven Central publish: bump `central-publishing-maven-plugin` **0.6.0 → 0.9.0** so staging drops `maven-metadata-central-staging.xml` (Central rejected 0.3.0 with “Bundle has content that does NOT have a .pom file: ai/kimss/kimss-java”).
+
 ## [0.3.0] — 2026-10-10
 
 ### Added

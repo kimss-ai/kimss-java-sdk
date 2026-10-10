@@ -103,7 +103,7 @@ Toggle Observe/Enforce under Guardrails → Agents & Delegation without removing
 
 ---
 
-## Installation (optional legacy client)
+## Installation (optional — swarm lineage / residual control-plane)
 
 ### Maven
 
@@ -111,17 +111,17 @@ Toggle Observe/Enforce under Guardrails → Agents & Delegation without removing
 <dependency>
   <groupId>ai.kimss</groupId>
   <artifactId>kimss-java</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```kotlin
-implementation("ai.kimss:kimss-java:0.2.0")
+implementation("ai.kimss:kimss-java:0.3.0")
 ```
 
-Requirements: JDK **11+**. Example: [examples/GatewayProxyFirstCall.java](examples/GatewayProxyFirstCall.java).
+Requirements: JDK **11+**. Examples: [ProxyAutoLineage.java](examples/ProxyAutoLineage.java), [GatewayProxyFirstCall.java](examples/GatewayProxyFirstCall.java).
 
 ## License
 

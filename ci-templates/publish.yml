@@ -33,4 +33,6 @@ jobs:
             echo "Skip publish: set CENTRAL_USERNAME / CENTRAL_PASSWORD (and GPG secrets) on the public mirror."
             exit 0
           fi
+          # SSOT: kimssApi/kimss_java_sdk — mirrored to kimss-ai/kimss-java-sdk
           mvn -B -Ppublish clean deploy
+          echo "Published ai.kimss:kimss-java — check https://repo1.maven.org/maven2/ai/kimss/kimss-java/"
