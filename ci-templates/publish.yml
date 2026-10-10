@@ -85,42 +85,82 @@ jobs:
           # Portal API: https://central.sonatype.org/publish/publish-portal-api/
           AUTH=$(printf '%s:%s' "$MAVEN_USERNAME" "$MAVEN_PASSWORD" | base64 -w0)
           NAME="kimss-java-${VERSION}"
-          echo "Uploading bundle as ${NAME} (AUTOMATIC)..."
-          HTTP_CODE=$(curl -sS -o /tmp/central-upload.txt -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer ${AUTH}" \
-            -F "bundle=@${PUB}/central-bundle.zip" \
-            "https://central.sonatype.com/api/v1/publisher/upload?name=${NAME}&publishingType=AUTOMATIC")
-          RESP=$(cat /tmp/central-upload.txt)
-          echo "HTTP ${HTTP_CODE} body: ${RESP}"
-          if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Central upload failed"
-            exit 1
-          fi
-          DEPLOYMENT_ID=$(echo "$RESP" | tr -d '"[:space:]')
-          if [ -z "$DEPLOYMENT_ID" ]; then
-            echo "::error::No deploymentId from Central upload"
-            exit 1
-          fi
 
-          echo "Polling deployment ${DEPLOYMENT_ID}..."
-          for i in $(seq 1 90); do
-            STATUS_JSON=$(curl -sS -X POST \
-              -H "Authorization: Bearer ${AUTH}" \
-              "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
-            echo "$STATUS_JSON"
-            STATE=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('deploymentState',''))")
-            case "$STATE" in
-              PUBLISHED)
-                echo "Published ai.kimss:kimss-java:${VERSION}"
-                echo "https://repo1.maven.org/maven2/ai/kimss/kimss-java/${VERSION}/"
-                exit 0
-                ;;
-              FAILED)
-                echo "::error::Central deployment FAILED"
-                exit 1
-                ;;
-            esac
-            sleep 10
+          drop_deployment() {
+            local id="$1"
+            [ -z "$id" ] && return 0
+            echo "Dropping Central deployment ${id} (best-effort)..."
+            curl -sS -X DELETE -H "Authorization: Bearer ${AUTH}" \
+              "https://central.sonatype.com/api/v1/publisher/deployment/${id}" || true
+          }
+
+          # Prior failed / stuck attempts that can block a new GAV publish
+          for id in \
+            923422ad-89de-4321-b2c0-4bd2eb28aecb \
+            af82ae93-400d-4950-9be8-09d442516a26 \
+            03f114bd-1039-4482-813a-f392b4ff7c57 \
+            20b0328a-0d88-496a-bcdd-33d60fca3f8c
+          do
+            drop_deployment "$id"
           done
-          echo "::error::Timed out waiting for PUBLISHED"
-          exit 1
+          sleep 3
+
+          upload_and_wait() {
+            echo "Uploading bundle as ${NAME} (AUTOMATIC)..."
+            local HTTP_CODE RESP DEPLOYMENT_ID STATUS_JSON STATE OTHER
+            HTTP_CODE=$(curl -sS -o /tmp/central-upload.txt -w "%{http_code}" -X POST \
+              -H "Authorization: Bearer ${AUTH}" \
+              -F "bundle=@${PUB}/central-bundle.zip" \
+              "https://central.sonatype.com/api/v1/publisher/upload?name=${NAME}&publishingType=AUTOMATIC")
+            RESP=$(cat /tmp/central-upload.txt)
+            echo "HTTP ${HTTP_CODE} body: ${RESP}"
+            if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
+              echo "::error::Central upload failed"
+              return 1
+            fi
+            DEPLOYMENT_ID=$(echo "$RESP" | tr -d '"[:space:]')
+            if [ -z "$DEPLOYMENT_ID" ]; then
+              echo "::error::No deploymentId from Central upload"
+              return 1
+            fi
+            echo "Polling deployment ${DEPLOYMENT_ID}..."
+            for i in $(seq 1 90); do
+              STATUS_JSON=$(curl -sS -X POST \
+                -H "Authorization: Bearer ${AUTH}" \
+                "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
+              echo "$STATUS_JSON"
+              STATE=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('deploymentState',''))")
+              case "$STATE" in
+                PUBLISHED)
+                  echo "Published ai.kimss:kimss-java:${VERSION}"
+                  echo "https://repo1.maven.org/maven2/ai/kimss/kimss-java/${VERSION}/"
+                  return 0
+                  ;;
+                FAILED)
+                  OTHER=$(echo "$STATUS_JSON" | python3 -c "import sys,json,re; e=json.load(sys.stdin).get('errors',{}); t=str(e); m=re.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', t); print(m.group(0) if m else '')")
+                  if [ -n "$OTHER" ] && [ "$OTHER" != "$DEPLOYMENT_ID" ]; then
+                    drop_deployment "$OTHER"
+                    drop_deployment "$DEPLOYMENT_ID"
+                    return 2
+                  fi
+                  echo "::error::Central deployment FAILED"
+                  return 1
+                  ;;
+              esac
+              sleep 10
+            done
+            echo "::error::Timed out waiting for PUBLISHED"
+            return 1
+          }
+
+          set +e
+          upload_and_wait
+          rc=$?
+          set -e
+          if [ "$rc" -eq 2 ]; then
+            echo "Retrying upload after dropping conflicting deployment..."
+            sleep 5
+            upload_and_wait
+            rc=$?
+          fi
+          exit "$rc"

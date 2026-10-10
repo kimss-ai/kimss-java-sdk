@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-10
+
+### Fixed
+
+- Maven Central: drop conflicting Portal deployments before upload; publish `0.3.2` after `0.3.1` was blocked by an in-flight deployment. Same `KimssProxy` payload as 0.3.0/0.3.1.
+
 ## [0.3.1] — 2026-10-10
 
 ### Fixed
