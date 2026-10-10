@@ -2,9 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-10
+
 ### Fixed
 
-- Maven Central publish: bump `central-publishing-maven-plugin` **0.6.0 → 0.9.0** so staging drops `maven-metadata-central-staging.xml` (Central rejected 0.3.0 with “Bundle has content that does NOT have a .pom file: ai/kimss/kimss-java”).
+- Maven Central publish (SSOT: `kimssApi/kimss_java_sdk` → mirror [kimss-java-sdk](https://github.com/kimss-ai/kimss-java-sdk)): sanitize staging (strip `maven-metadata*`), verify `.pom` in zip, upload via Central Publisher API. Fixes portal rejection `Bundle has content that does NOT have a .pom file: ai/kimss/kimss-java`.
+
+### Added
+
+- Same as 0.3.0 (`KimssProxy` / `RunContext`) — 0.3.0 never landed on Central.
 
 ## [0.3.0] — 2026-10-10
 

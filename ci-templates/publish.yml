@@ -1,7 +1,7 @@
 name: Publish to Maven Central
 
-# Requires Central portal credentials + GPG on the public mirror repo.
-# Enable profile -Ppublish after Sonatype namespace ai.kimss is approved.
+# SSOT lives in kimssApi/kimss_java_sdk (mirrored to kimss-ai/kimss-java-sdk).
+# Requires on the public mirror: CENTRAL_USERNAME, CENTRAL_PASSWORD, MAVEN_GPG_*.
 
 on:
   push:
@@ -23,16 +23,91 @@ jobs:
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      - name: Publish
+      - name: Build signed Central bundle
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         run: |
+          set -euo pipefail
           if [ -z "${MAVEN_USERNAME:-}" ] || [ -z "${MAVEN_PASSWORD:-}" ]; then
             echo "Skip publish: set CENTRAL_USERNAME / CENTRAL_PASSWORD (and GPG secrets) on the public mirror."
             exit 0
           fi
-          # SSOT: kimssApi/kimss_java_sdk — mirrored to kimss-ai/kimss-java-sdk
-          mvn -B -Ppublish clean deploy
-          echo "Published ai.kimss:kimss-java — check https://repo1.maven.org/maven2/ai/kimss/kimss-java/"
+
+          # Stage + sign locally; do not upload yet (portal rejects maven-metadata* in the zip).
+          mvn -B -Ppublish clean deploy -DskipPublishing=true
+
+          STAGE=target/central-staging
+          PUB=target/central-publishing
+          mkdir -p "$PUB"
+
+          echo "== Staging tree before sanitize =="
+          find "$STAGE" -type f | sort
+
+          # Known Central failure: metadata under ai/kimss/kimss-java/ (no sibling .pom).
+          # See https://stackoverflow.com/q/78026067 and Kotlinlang Slack thread.
+          find "$STAGE" -name 'maven-metadata*.xml' -print -delete
+          rm -f "$STAGE/central-bundle.zip" "$PUB/central-bundle.zip"
+
+          echo "== Staging tree after sanitize =="
+          find "$STAGE" -type f | sort
+
+          python3 - <<'PY'
+          import pathlib, zipfile
+          stage = pathlib.Path("target/central-staging")
+          out = pathlib.Path("target/central-publishing/central-bundle.zip")
+          out.parent.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for path in sorted(stage.rglob("*")):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(stage).as_posix())
+          print("Wrote", out, "bytes", out.stat().st_size)
+          with zipfile.ZipFile(out) as zf:
+              names = zf.namelist()
+              for n in names:
+                  print(n)
+              if not any(n.endswith(".pom") and "kimss-java-" in n for n in names):
+                  raise SystemExit("Bundle is missing kimss-java-*.pom")
+              if any("maven-metadata" in n for n in names):
+                  raise SystemExit("Bundle still contains maven-metadata")
+          PY
+
+          # Portal API: https://central.sonatype.org/publish/publish-portal-api/
+          AUTH=$(printf '%s:%s' "$MAVEN_USERNAME" "$MAVEN_PASSWORD" | base64 -w0)
+          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          NAME="kimss-java-${VERSION}"
+          echo "Uploading bundle as ${NAME} (AUTOMATIC)..."
+          RESP=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${AUTH}" \
+            -F "bundle=@${PUB}/central-bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=${NAME}&publishingType=AUTOMATIC")
+          echo "Upload response: ${RESP}"
+          DEPLOYMENT_ID=$(echo "$RESP" | tr -d '"')
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "null" ]; then
+            echo "::error::No deploymentId from Central upload"
+            exit 1
+          fi
+
+          echo "Polling deployment ${DEPLOYMENT_ID}..."
+          for i in $(seq 1 60); do
+            STATUS_JSON=$(curl -sS -X POST \
+              -H "Authorization: Bearer ${AUTH}" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
+            echo "$STATUS_JSON"
+            STATE=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('deploymentState',''))" 2>/dev/null || true)
+            case "$STATE" in
+              PUBLISHED)
+                echo "Published ai.kimss:kimss-java:${VERSION}"
+                echo "https://repo1.maven.org/maven2/ai/kimss/kimss-java/"
+                exit 0
+                ;;
+              FAILED)
+                echo "::error::Central deployment FAILED"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Timed out waiting for PUBLISHED"
+          exit 1

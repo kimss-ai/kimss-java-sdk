@@ -6,7 +6,7 @@
 
 > **Path A (chat):** keep the official OpenAI or Anthropic Java client — do **not** use `KimssClient` / `AgentsApi.run` for inference. Contract: [control-plane AI_INTEGRATION.md](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md).
 >
-> **Optional swarm lineage:** add `ai.kimss:kimss-java` (≥0.3.0) and use **`KimssProxy`** so Observe/Enforce on Swarm Runs works without hand-rolled `X-Kimss-Run-Id` headers. Python equivalent: `pip install "kimss>=2.2.0"` + `KimssProxy`. New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
+> **Optional swarm lineage:** add `ai.kimss:kimss-java` (≥0.3.1) and use **`KimssProxy`** so Observe/Enforce on Swarm Runs works without hand-rolled `X-Kimss-Run-Id` headers. Python equivalent: `pip install "kimss>=2.2.0"` + `KimssProxy`. New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
 
 **Track, govern, and secure autonomous agents with exactly 1 line of code. Zero data-plane refactoring required.**
 
@@ -111,14 +111,14 @@ Toggle Observe/Enforce under Guardrails → Agents & Delegation without removing
 <dependency>
   <groupId>ai.kimss</groupId>
   <artifactId>kimss-java</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```kotlin
-implementation("ai.kimss:kimss-java:0.3.0")
+implementation("ai.kimss:kimss-java:0.3.1")
 ```
 
 Requirements: JDK **11+**. Examples: [ProxyAutoLineage.java](examples/ProxyAutoLineage.java), [GatewayProxyFirstCall.java](examples/GatewayProxyFirstCall.java).
