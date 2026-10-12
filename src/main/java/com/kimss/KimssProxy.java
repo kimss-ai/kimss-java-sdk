@@ -63,7 +63,7 @@ public final class KimssProxy {
     }
     String key = b.apiKey;
     if (key == null || key.isBlank()) {
-      key = firstEnv("KIMSS_WORKSPACE_KEY", "KIMSS_API_KEY");
+      key = firstEnv("KIMSS_API_KEY", "KIMSS_WORKSPACE_KEY");
     }
     this.apiKey = key != null ? key.trim() : "";
     this.agentId = aid;

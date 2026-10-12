@@ -4,7 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-purple?logo=github)](https://github.com/kimss-ai/kimss-java-sdk/actions/workflows/ci.yml)
 
-> **Path A (chat):** keep the official OpenAI or Anthropic Java client — do **not** use `KimssClient` / `AgentsApi.run` for inference. Contract: [control-plane AI_INTEGRATION.md](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md).
+> **New Kimss gateway integration** starts at [control-plane ONBOARDING.md](https://github.com/kimss-ai/kimss-control-plane/blob/main/ONBOARDING.md). This repo is the Java client.
+>
+> **Path A (chat):** keep the official OpenAI or Anthropic Java client — do **not** use `KimssClient` / `AgentsApi.run` for inference. Contract: [AI_INTEGRATION.md](https://github.com/kimss-ai/kimss-control-plane/blob/main/AI_INTEGRATION.md). Prefer env `KIMSS_API_KEY` (alias `KIMSS_WORKSPACE_KEY`).
 >
 > **Optional swarm lineage:** add `ai.kimss:kimss-java` (≥0.3.2) and use **`KimssProxy`** so Observe/Enforce on Swarm Runs works without hand-rolled `X-Kimss-Run-Id` headers. Python equivalent: `pip install "kimss>=2.2.0"` + `KimssProxy`. New Python agents: [Kimss Forge](https://github.com/kimss-ai/kimss-forge).
 
@@ -21,7 +23,7 @@ Dual-listener inbound: OpenAI OkHttp at `https://api.kimss.ai/v1` or Anthropic J
 ```java
 OpenAIClient client = OpenAIOkHttpClient.builder()
     .baseUrl("https://api.kimss.ai/v1")
-    .apiKey(System.getenv("KIMSS_WORKSPACE_KEY"))
+    .apiKey(System.getenv("KIMSS_API_KEY"))
     .putHeader("X-Kimss-Agent-Id", System.getenv("KIMSS_AGENT_ID"))
     .putHeader("X-Kimss-Agent-Name", System.getenv().getOrDefault("KIMSS_AGENT_NAME", "My Agent"))
     .build();
@@ -32,7 +34,7 @@ OpenAIClient client = OpenAIOkHttpClient.builder()
 ```java
 AnthropicClient client = AnthropicOkHttpClient.builder()
     .baseUrl("https://api.kimss.ai")
-    .apiKey(System.getenv("KIMSS_WORKSPACE_KEY"))
+    .apiKey(System.getenv("KIMSS_API_KEY"))
     .putHeader("X-Kimss-Agent-Id", System.getenv("KIMSS_AGENT_ID"))
     .putHeader("X-Kimss-Agent-Name", System.getenv().getOrDefault("KIMSS_AGENT_NAME", "My Agent"))
     .build();

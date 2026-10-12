@@ -7,7 +7,7 @@ Pair with [AI_INTEGRATION.md](../AI_INTEGRATION.md), [README.md](../README.md), 
 1. JDK **11+**.
 2. For **inference**: keep the native SDK. OpenAI Java OkHttp → `baseUrl("https://api.kimss.ai/v1")`. Anthropic Java → `baseUrl("https://api.kimss.ai")` (appends `/v1/messages`). Always send Agent-Id headers. No Kimss SDK required.
 3. Optional: Maven `ai.kimss:kimss-java` for legacy/control-plane residual only.
-4. Env: `KIMSS_WORKSPACE_KEY` or `KIMSS_API_KEY`, `KIMSS_AGENT_ID`.
+4. Env: `KIMSS_API_KEY` (alias `KIMSS_WORKSPACE_KEY`), `KIMSS_AGENT_ID`.
 5. **Deprecated:** `KimssClient.agents().run`, `models().create`.
 
 ## Preferred inference

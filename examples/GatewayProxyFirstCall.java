@@ -4,7 +4,7 @@
  * Requires dependency: com.openai:openai-java (OkHttp) in your app — not kimss-java.
  *
  * Env:
- *   KIMSS_WORKSPACE_KEY or KIMSS_API_KEY
+ *   KIMSS_API_KEY or KIMSS_WORKSPACE_KEY
  *   KIMSS_AGENT_ID
  *   KIMSS_MODEL
  * Optional: KIMSS_GATEWAY_URL (default https://api.kimss.ai/v1), KIMSS_AGENT_NAME
@@ -14,11 +14,11 @@
  */
 public class GatewayProxyFirstCall {
   public static void main(String[] args) {
-    String key = firstNonBlank(System.getenv("KIMSS_WORKSPACE_KEY"), System.getenv("KIMSS_API_KEY"));
+    String key = firstNonBlank(System.getenv("KIMSS_API_KEY"), System.getenv("KIMSS_WORKSPACE_KEY"));
     String agentId = System.getenv("KIMSS_AGENT_ID");
     String model = System.getenv("KIMSS_MODEL");
     if (key == null || agentId == null || agentId.isBlank() || model == null || model.isBlank()) {
-      System.err.println("Set KIMSS_WORKSPACE_KEY (or KIMSS_API_KEY), KIMSS_AGENT_ID, and KIMSS_MODEL");
+      System.err.println("Set KIMSS_API_KEY (or KIMSS_WORKSPACE_KEY), KIMSS_AGENT_ID, and KIMSS_MODEL");
       System.exit(1);
     }
     String base = firstNonBlank(System.getenv("KIMSS_GATEWAY_URL"), "https://api.kimss.ai/v1");

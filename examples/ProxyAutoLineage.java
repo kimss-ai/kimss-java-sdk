@@ -1,7 +1,7 @@
 /**
  * Invisible Proxy with automatic Run-Id / lineage (setup-once, non-Forge).
  *
- * <p>Env: KIMSS_WORKSPACE_KEY or KIMSS_API_KEY, KIMSS_AGENT_ID, KIMSS_MODEL
+ * <p>Env: KIMSS_API_KEY or KIMSS_WORKSPACE_KEY, KIMSS_AGENT_ID, KIMSS_MODEL
  *
  * <p>Compile against the SDK jar; toggle Observe/Enforce in Guardrails — keep this client.
  */
@@ -13,9 +13,9 @@ import java.util.Map;
 
 public final class ProxyAutoLineage {
   public static void main(String[] args) {
-    String key = env("KIMSS_WORKSPACE_KEY");
+    String key = env("KIMSS_API_KEY");
     if (key == null) {
-      key = env("KIMSS_API_KEY");
+      key = env("KIMSS_WORKSPACE_KEY");
     }
     String agentId = env("KIMSS_AGENT_ID");
     if (agentId == null) {
@@ -23,7 +23,7 @@ public final class ProxyAutoLineage {
     }
     String model = env("KIMSS_MODEL");
     if (key == null || model == null) {
-      System.err.println("Set KIMSS_WORKSPACE_KEY (or KIMSS_API_KEY) and KIMSS_MODEL.");
+      System.err.println("Set KIMSS_API_KEY (or KIMSS_WORKSPACE_KEY) and KIMSS_MODEL.");
       System.exit(1);
     }
 

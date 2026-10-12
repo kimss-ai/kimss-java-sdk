@@ -47,11 +47,17 @@ public final class KimssClient {
     this.models = new ModelsApi(this);
   }
 
-  /** Build from {@code KIMSS_API_KEY} and optional {@code KIMSS_BASE_URL}. */
+  /**
+   * Build from {@code KIMSS_API_KEY} (preferred) or alias {@code KIMSS_WORKSPACE_KEY},
+   * and optional {@code KIMSS_BASE_URL}.
+   */
   public static KimssClient fromEnv() {
     String key = System.getenv("KIMSS_API_KEY");
     if (key == null || key.isBlank()) {
-      throw new IllegalStateException("Set KIMSS_API_KEY");
+      key = System.getenv("KIMSS_WORKSPACE_KEY");
+    }
+    if (key == null || key.isBlank()) {
+      throw new IllegalStateException("Set KIMSS_API_KEY (or KIMSS_WORKSPACE_KEY)");
     }
     String base = System.getenv("KIMSS_BASE_URL");
     return builder().apiKey(key).baseUrl(base != null && !base.isBlank() ? base : DEFAULT_BASE_URL).build();
